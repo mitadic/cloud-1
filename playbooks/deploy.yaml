@@ -1,0 +1,49 @@
+- name: Deploy app
+  hosts: my_ec2_hosts
+  become: true  # become root
+  tasks:
+
+    - name: Create the mariadb path
+      file:
+        path: /mnt/data/mariadb
+        state: directory
+        mode: '0777'
+
+    - name: Create the wordpress path
+      file:
+        path: /mnt/data/wp
+        state: directory
+        mode: '0777'
+
+    - name: Copy inception folder to hosts
+      become: true
+      copy:
+        src: ../compose  # Path to local Repo
+        dest: /home/{{ ansible_user }}/cloud1  # Remote path
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0644"
+
+    - name: Append WP_CONNECTED_TO_DOMAIN_NAME only for instance1
+      lineinfile:
+        path: /home/{{ ansible_user }}/cloud1/compose/.env
+        line: "WP_CONNECTED_TO_DOMAIN_NAME=true"
+        create: yes
+      when: inventory_hostname == "instance1"
+
+    - name: Tear down existing services
+      community.docker.docker_compose_v2:
+        project_src: /home/{{ ansible_user }}/cloud1/compose
+        state: stopped
+
+
+    - name: Create and start services
+      community.docker.docker_compose_v2:
+        project_src: /home/{{ ansible_user }}/cloud1/compose
+        state: present
+        build: always
+      register: output
+
+    - name: Show container status
+      debug:
+        var: output

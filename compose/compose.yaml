@@ -1,0 +1,60 @@
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - wordpress_data:/var/www/wordpress:ro
+    depends_on:
+      - wordpress
+    restart: unless-stopped
+
+  wordpress:
+    build:
+      context: wordpress_src
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - wordpress_data:/var/www/wordpress
+    expose:
+      - 9000
+    depends_on:
+      mariadb:
+        condition: service_healthy
+        restart: true
+    restart: unless-stopped
+
+  mariadb:
+    image: mariadb:latest
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  wordpress_data:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '/mnt/data/wp'
+  mariadb_data:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '/mnt/data/mariadb'

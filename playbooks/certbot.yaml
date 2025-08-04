@@ -1,0 +1,16 @@
+- name: Certbot
+  hosts: instance1 # plays only for instmce 1
+  become: true  # become root
+  tasks:
+
+    - name: Install certbot inside the nginx container
+      shell: docker exec -i compose-nginx-1 apk add --no-cache certbot certbot-nginx
+
+    - name: Run certbot to generate certificate (non-interactive)
+      shell: |
+        docker exec -i compose-nginx-1 certbot --nginx \
+          -d sunset-pong.de \
+          -m your@email.com \
+          --agree-tos \
+          --non-interactive \
+          --redirect

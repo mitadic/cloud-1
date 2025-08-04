@@ -1,0 +1,27 @@
+- name: Setup Docker and Docker Compose
+  import_playbook: ./playbooks/setup.yaml
+  tags: setup
+
+- name: Deploy app
+  import_playbook: ./playbooks/deploy.yaml
+  tags: deploy
+
+- name: Clean and Remove all docker
+  import_playbook: ./playbooks/clean.yaml
+  tags: clean
+
+- name: Create AWS security group for ssh http and https
+  import_playbook: ./playbooks/AWS_security_group.yaml
+  tags: aws_sg
+
+- name: Create EC2
+  import_playbook: ./playbooks/AWS_create_ec2.yaml
+  tags: aws_new_ec2
+
+- name: Mount EBS
+  import_playbook: ./playbooks/AWS_mount_ebs.yaml
+  tags: aws_mount_ebs
+
+- name: Certbot
+  import_playbook: ./playbooks/certbot.yaml
+  tags: certbot

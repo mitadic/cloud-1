@@ -1,0 +1,45 @@
+- name: Clean and Remove all docker
+  hosts: my_ec2_hosts
+  become: true # Become root 
+  tasks:
+
+    - name: Stop all running Docker containers
+      shell: |
+        docker ps -q | xargs -r docker stop
+      ignore_errors: true
+
+    - name: Remove all Docker containers
+      shell: |
+        docker ps -a -q | xargs -r docker rm
+      ignore_errors: true
+
+    - name: Remove all Docker images
+      shell: |
+        docker image ls -q | xargs -r docker rmi -f
+      ignore_errors: true
+
+    - name: Remove all Docker volumes
+      shell: |
+        docker volume ls -q | xargs -r docker volume rm
+      ignore_errors: true
+
+    - name: Remove all user-defined Docker networks
+      shell: |
+        docker network ls --filter "type=custom" -q | xargs -r docker network rm
+      ignore_errors: true
+
+    - name: Recursively delete all contents of /opt/src
+      file:
+        path: /home/{{ ansible_user }}/cloud1
+        state: absent
+
+    - name: Recursively delete all contents of wordpress volume
+      file:
+        path: /mnt/data/wp
+        state: absent
+
+    - name: Recursively delete all contents of mariadb volume
+      file:
+        path: /mnt/data/mariadb
+        state: absent
+

@@ -1,0 +1,25 @@
+- name: Format and mount EBS volumes
+  hosts: my_ec2_hosts
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Format the EBS volume
+      filesystem:
+        fstype: ext4
+        dev: /dev/xvdf
+
+    - name: Create mount point directory
+      file:
+        path: /mnt/data
+        state: directory
+        mode: '0755'
+
+    - name: Mount the EBS volume and add to /etc/fstab
+      mount:
+        path: /mnt/data
+        src: /dev/xvdf
+        fstype: ext4
+        state: mounted
+        opts: defaults
+

@@ -1,0 +1,47 @@
+- name: Create security group with SSH, HTTP, HTTPS
+  environment:
+    AWS_ACCESS_KEY_ID: -insert
+    AWS_SECRET_ACCESS_KEY: -insert
+    AWS_DEFAULT_REGION: eu-central-1
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    region: eu-central-1
+    sg_name: my-cloud1-sg
+    sg_description: Security group for web server (SSH, HTTP, HTTPS)
+  tasks:
+    - name: Get public IP of control machine
+      uri:
+        url: https://api.ipify.org
+        return_content: yes
+      register: public_ip_result
+
+    - name: Format IP with /32 CIDR
+      set_fact:
+        my_ip: "{{ public_ip_result.content }}/32"
+
+    - name: Create security group with inbound rules
+      amazon.aws.ec2_group:
+        name: "{{ sg_name }}"
+        description: "{{ sg_description }}"
+        region: "{{ region }}"
+        rules:
+          - proto: tcp
+            from_port: 22
+            to_port: 22
+            cidr_ip: "{{ my_ip }}"
+          - proto: tcp
+            from_port: 80
+            to_port: 80
+            cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            from_port: 443
+            to_port: 443
+            cidr_ip: 0.0.0.0/0
+        rules_egress:
+          - proto: -1
+            from_port: 0
+            to_port: 0
+            cidr_ip: 0.0.0.0/0
+        state: present

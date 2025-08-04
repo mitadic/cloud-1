@@ -1,0 +1,84 @@
+- name: Create EC2 instance and tag it
+  environment:
+    AWS_ACCESS_KEY_ID: -insert
+    AWS_SECRET_ACCESS_KEY: -insert
+    AWS_DEFAULT_REGION: eu-central-1
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    region: eu-central-1
+    key_name: cloud-1-jubernar       # name of the 'key pair' (as defined by and on AWS for EC2), needn't match private.pem
+    instance_type: t2.micro
+    ami_id: ami-02003f9f0fde924ea    # Ubuntu LTS server
+    security_group: my-cloud1-sg
+    tag_name: my-ansible-cloud1-instance
+    volume_size: 2                   # Size of persitent EBS in GB 
+    volume_device_name: /dev/sdf
+
+  tasks:
+    - name: Launch instance
+      amazon.aws.ec2_instance:
+        name: "{{ tag_name }}"
+        region: "{{ region }}"
+        key_name: "{{ key_name }}"
+        instance_type: "{{ instance_type }}"
+        image_id: "{{ ami_id }}"
+        wait: true
+        count: 3
+        security_groups:
+          - my-cloud1-sg
+        network:
+          assign_public_ip: true
+        tags:
+          Env: AnsibleTest
+      register: ec2
+
+    - name: Save public IPs to inventory/inventory.yaml
+      copy:
+        dest: "../inventory.yaml"
+        content: |
+          my_ec2_hosts:
+            hosts:
+            {% for instance in ec2.instances %}
+            instance{{ loop.index }}:
+                ansible_host: {{ instance.public_ip_address }}
+            {% endfor %}
+          vars:
+              ansible_user: ubuntu
+              ansible_ssh_private_key_file: ./key.pem
+              ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+
+
+    - name: Create EBS volume for each instance
+      amazon.aws.ec2_vol:
+        region: "{{ region }}"
+        volume_size: "{{ volume_size }}"
+        volume_type: gp2
+        availability_zone: "{{ item.placement.availability_zone }}"
+        state: present
+        tags:
+          Name: volume-for-{{ item.instance_id }}
+      loop: "{{ ec2.instances }}"
+      loop_control:
+        label: "{{ item.instance_id }}"
+      register: volumes
+
+    - name: Combine instances and volumes into a zipped list
+      set_fact:
+        zipped_volumes: "{{ ec2.instances | zip(volumes.results) | map('list') | list }}"
+
+
+    - name: Attach EBS volume to instance
+      amazon.aws.ec2_vol:
+        region: "{{ region }}"
+        instance: "{{ item.0.instance_id }}"
+        id: "{{ item.1.volume_id }}"
+        device_name: "{{ volume_device_name }}"
+        state: present
+      loop: "{{ zipped_volumes }}"
+      loop_control:
+        label: "{{ item.0.instance_id }} → {{ item.1.volume_id }}"
+
+
+

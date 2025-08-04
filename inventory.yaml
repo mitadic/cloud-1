@@ -1,0 +1,12 @@
+my_ec2_hosts:
+  hosts:
+    instance1:
+      ansible_host: 54.93.242.121
+    instance2:
+      ansible_host: 18.197.71.144
+    instance3:
+      ansible_host: 3.76.42.181
+  vars:
+    ansible_user: ubuntu
+    ansible_ssh_private_key_file: ./key.pem
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
